@@ -17,7 +17,7 @@ In order to open the present Jupyter notebook "MesoscopicTolmanLength.ipynb" you
 - click the file "MesoscopicTolmanLength.ipynb"
 - wait for all the extension to be loaded: when the notebook is loaded you should see a "Table of Contents" on the left side and the different code cells in the "folded" mode with a small grey arrow on the left
 
-In order to excute the code content of a cell, select it and enter the key combination "shift + enter"
+In order to excute the code content of a cell, select it and enter the key combination "shift + enter".
 As of today, after much testing Google Chrome has offered the most reliable expreience in handling the notebook.
 
 ## Dependencies
