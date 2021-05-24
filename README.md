@@ -21,7 +21,12 @@ In order to excute the code content of a cell, select it and enter the key combi
 As of today, after much testing Google Chrome has offered the most reliable expreience in handling the notebook.
 
 ## Dependencies
-A part from the python dependencies which are taken care by the [idea.deploy](https://github.com/lullimat/idea.deploy) installation, a working "latex" environment needs to be installed on the system in order to reproduce the plots which contain latex symbols
+A part from the python dependencies which are taken care by the [idea.deploy](https://github.com/lullimat/idea.deploy) installation, a working "latex" environment needs to be installed on the system in order to reproduce the plots which contain latex symbols.
+
+Specifically you will need the following latex fonts/styles:
+- sourcesanspro
+- ly1enc
+- preview
 
 ## Hardware Requirements
 The largest sizes of the simulations need a rather capable hardware with roughly 16GB of allocatable memory. The published results for such systems have been computed from simulations performed on NVIDIA P100 GPUs.
