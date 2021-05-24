@@ -4,6 +4,8 @@
 
 **The first version of the Jupyter notebook is now available**
 
+**The Supplemental Material figures will be added soon**
+
 Welcome to the repository related to the paper [https://arxiv.org/abs/2105.08772](https://arxiv.org/abs/2105.08772).
 In order to use this repository you should have cloned it from the parent project [idea.deploy](https://github.com/lullimat/idea.deploy) in the directory ./papers by means of the local python script idpy-papers.py.
 
