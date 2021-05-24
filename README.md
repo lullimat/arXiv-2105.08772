@@ -1,4 +1,4 @@
-# Structure and Isotropy of Lattice Pressure Tensors for Multi-range Potentials
+# A Mesoscale Perspective on the Tolman Length
 
 **This repository is being constantly updated !!**
 
