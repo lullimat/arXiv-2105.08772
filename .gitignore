@@ -3,4 +3,5 @@ reproduced-results
 *__pycache__
 *.ipynb_checkpoints
 *~
+SCEqCache.json
 !.gitignore
