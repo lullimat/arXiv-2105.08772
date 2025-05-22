@@ -1,7 +1,12 @@
 from idpy.LBM.SCThermo import ShanChanEquilibriumCache, ShanChen
 from idpy.LBM.LBM import XIStencils, FStencils, NPT, LBMTypes
-from idpy.LBM.LBM import ShanChenMultiPhase
-from idpy.LBM.LBM import CheckUConvergence, CheckCenterOfMassDeltaPConvergence
+## Need to change to the metaprogramming version
+# from idpy.LBM.LBM import ShanChenMultiPhase
+# from idpy.LBM.LBM import CheckUConvergence, CheckCenterOfMassDeltaPConvergence
+
+from idpy.LBM.MultiPhase import ShanChenMultiPhase
+from idpy.LBM.MultiPhaseLoopChecks import CheckUConvergenceSCMP, CheckCenterOfMassDeltaPConvergence
+
 from idpy.LBM.LBM import PosFromIndex
 
 
@@ -25,9 +30,9 @@ _eps_f = sp.Rational(10, 31)
 TLPsis = [sp.exp(-1/n), 1 - sp.exp(-n), 
           ((eps/n + 1) ** (-1 / eps)).subs(eps, _eps_f)]
 
-TLPsiCodes = {TLPsis[0]: 'exp((NType)(-1./ln))', 
-              TLPsis[1]: '1. - exp(-(NType)ln)', 
-              TLPsis[2]: ('pow(((NType)ln/(' + str(float(_eps_f)) + ' + (NType)ln)), '
+TLPsiCodes = {TLPsis[0]: 'exp((NType)(-1./ln_0))', 
+              TLPsis[1]: '1. - exp(-(NType)ln_0)', 
+              TLPsis[2]: ('pow(((NType)ln_0/(' + str(float(_eps_f)) + ' + (NType)ln_0)), '
                           + str(float(1/_eps_f)) + ')')}
 
 def AddPosPeriodic(a, b, dim_sizes):
@@ -380,7 +385,7 @@ class TolmanSimulations:
 
             self.mp_sim.MainLoop(range(0, self.params_dict['max_steps'],
                                        self.params_dict['delta_step']), 
-                                 convergence_functions = [CheckUConvergence,
+                                 convergence_functions = [CheckUConvergenceSCMP,
                                                           CheckCenterOfMassDeltaPConvergence])
 
             '''
@@ -617,7 +622,7 @@ class TolmanSimulationsFlat:
 
             self.mp_sim.MainLoop(range(0, self.params_dict['max_steps'],
                                        self.params_dict['delta_step']), 
-                                 convergence_functions = [CheckUConvergence])
+                                 convergence_functions = [CheckUConvergenceSCMP])
 
             print("Dumping in", self.dump_name)
             self.mp_sim.sims_dump_idpy_memory += ['n']
