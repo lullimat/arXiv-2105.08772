@@ -543,6 +543,151 @@ class FlatAnalysis:
                 'p_n_minus_t_spl': self.p_n_minus_t_spl,
                 'p_n': self.p_n, 'p_t': self.p_t}
 
+class FlatExpansion:
+    def __init__(self, n_field = None, f_stencil = None, psi_sym = None, G = None):
+        if n_field is None:
+            raise Exception("Parameter n_field must not be None")
+        if f_stencil is None:
+            raise Exception("Parameter f_stencil must not be None")
+        if psi_sym is None:
+            raise Exception("Parameter psi_sym must not be None")
+        if G is None:
+            raise Exception("Parameter G must not be None")
+
+        self.n_field, self.f_stencil, self.psi_sym, self.G = \
+            n_field, f_stencil, psi_sym, G
+
+        self.dim_sizes = self.n_field.shape
+        self.dim_center = np.array(list(map(lambda x: x//2, self.dim_sizes)))
+        self.dim = len(self.dim_sizes)
+
+        if self.dim == 2:
+            self.n_line = self.n_field[self.dim_center[0], self.dim_center[1]:]
+            self.z_range = np.arange(self.dim_sizes[1] - self.dim_center[1])
+            
+        if self.dim == 3:
+            self.n_line = self.n_field[self.dim_center[0], self.dim_center[1],
+                                       self.dim_center[2]:]
+            self.z_range = np.arange(self.dim_sizes[2] - self.dim_center[2])
+            
+        self.psi_f = sp.lambdify(n, self.psi_sym)
+
+    def GetFlatSigma(self):
+        _LPT_class = LatticePressureTensor(self.n_field, self.f_stencil, self.psi_sym, self.G)
+        self.LPT = _LPT_class.GetLPT()
+
+        if self.dim == 2:
+            self.p_n = self.LPT[0, self.dim_center[0], self.dim_center[1]:]
+            self.p_t = self.LPT[2, self.dim_center[0], self.dim_center[1]:]
+
+        if self.dim == 3:
+            self.p_n = self.LPT[0, self.dim_center[0], self.dim_center[1], self.dim_center[2]:]
+            self.p_t = self.LPT[3, self.dim_center[0], self.dim_center[1], self.dim_center[2]:]
+
+        self.p_n_minus_t = self.p_n - self.p_t
+        self.p_n_minus_t_spl = interpolate.UnivariateSpline(self.z_range,
+                                                            self.p_n_minus_t,
+                                                            k = 5, s = 0)
+        return {'sigma_lattice': self.p_n_minus_t_spl.integral(self.z_range[0],
+                                                               self.z_range[-1]),
+                'p_n_minus_t_spl': self.p_n_minus_t_spl,
+                'p_n': self.p_n, 'p_t': self.p_t}
+
+
+    def GetFlatExpansion(self, grains = 2 ** 20, cutoff = 2 ** 10):
+        self.z_fine = np.linspace(self.z_range[0], self.z_range[-1], grains)
+        self.psi_line = self.psi_f(self.n_line)
+
+        self.psi_line_spl = \
+            interpolate.UnivariateSpline(self.z_range, self.psi_line, k = 5, s = 0)
+
+        self.d_psi_line_spl = self.psi_line_spl.derivative(1)
+        self.dd_psi_line_spl = self.psi_line_spl.derivative(2)
+
+        '''
+        Zeroth order
+        '''
+
+        self.I0_a_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.d_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+
+        self.I0_b_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.dd_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+
+        self.I0_a = - self.G * self.I0_a_spl.integral(self.z_fine[0], self.z_fine[-1]) / 6
+        self.I0_b = + self.G * self.I0_b_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6 * 12)
+        
+        '''
+        First order
+        '''
+
+        _sigma_lattice = self.GetFlatSigma()['sigma_lattice']
+        self.z_s_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                    self.z_fine *
+                                                    self.p_n_minus_t_spl(self.z_fine),
+                                                    k = 5, s = 0)
+        self.z_s = self.z_s_spl.integral(self.z_fine[0], self.z_fine[-1]) / _sigma_lattice
+
+        self.I1_a_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.z_fine - self.z_s) *
+                                                     (self.d_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+
+        self.I1_b_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.z_fine - self.z_s) *
+                                                     (self.dd_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+        
+        self.I1_c_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     self.d_psi_line_spl(self.z_fine) *
+                                                     self.dd_psi_line_spl(self.z_fine),
+                                                     k = 5, s = 0)
+
+        self.I1_a = + self.G * self.I1_a_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6)        
+        self.I1_b = - self.G * self.I1_b_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6 * 12)        
+        self.I1_c = - self.G * self.I1_c_spl.integral(self.z_fine[0], self.z_fine[-1]) * 5 / (6 * 12)
+
+        '''
+        Second order
+        '''
+
+        self.I2_a_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     ((self.z_fine - self.z_s) ** 2) *
+                                                     (self.d_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+        
+        self.I2_b_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     ((self.z_fine - self.z_s) ** 2) *
+                                                     (self.dd_psi_line_spl(self.z_fine) ** 2),
+                                                     k = 5, s = 0)
+
+        self.I2_c_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.z_fine - self.z_s) *
+                                                     (self.d_psi_line_spl(self.z_fine) * self.dd_psi_line_spl(self.z_fine)),
+                                                     k = 5, s = 0)
+
+        self.I2_d_spl = interpolate.UnivariateSpline(self.z_fine,
+                                                     (self.d_psi_line_spl(self.z_fine)) ** 2,
+                                                     k = 5, s = 0)
+
+        self.I2_a = - self.G * self.I2_a_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6)        
+        self.I2_b = + self.G * self.I2_b_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6 * 12)        
+        self.I2_c = + self.G * self.I2_c_spl.integral(self.z_fine[0], self.z_fine[-1]) * 5 / (6 * 6)
+        self.I2_d = + self.G * self.I2_d_spl.integral(self.z_fine[0], self.z_fine[-1]) / (6 * 3)
+
+        return {'I0_a': self.I0_a, 'I0_a_spl': self.I0_a_spl,
+                'I0_b': self.I0_b, 'I0_b_spl': self.I0_b_spl,
+                'I1_a': self.I1_a, 'I1_a_spl': self.I1_a_spl,
+                'I1_b': self.I1_b, 'I1_b_spl': self.I1_b_spl,                
+                'I1_c': self.I1_c, 'I1_c_spl': self.I1_c_spl,
+                'I2_a': self.I2_a, 'I2_a_spl': self.I2_a_spl,
+                'I2_b': self.I2_b, 'I2_b_spl': self.I2_b_spl,                
+                'I2_c': self.I2_c, 'I2_c_spl': self.I2_c_spl,
+                'I2_d': self.I2_d, 'I2_d_spl': self.I2_d_spl,                
+                'z_s': self.z_s, 'z_fine': self.z_fine}
+
 
 class TolmanSimulationsFlat:
     def __init__(self, *args, **kwargs):
